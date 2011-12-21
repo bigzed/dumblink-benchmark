@@ -1,0 +1,6 @@
+[submodule "dumblink-cpp"]
+	path = dumblink-cpp
+	url = git@github.com:bigzed/dumblink-cpp.git
+[submodule "dumblink-rb"]
+	path = dumblink-rb
+	url = git@github.com:bigzed/dumblink-rb.git
