@@ -36,13 +36,9 @@ def tearDown(target)
 end
 
 # Time execution time of method or block
-def time_method(method=nil, *args)
+def time_method
   beginning_time = Time.now
-  if block_given?
-    yield
-  else
-    self.send(method, args)
-  end
+  yield
   end_time = Time.now
   (end_time - beginning_time) * 1000
 end
@@ -59,13 +55,13 @@ def main
   timeCpp = 0
   timeRuby = 0
   timeMethod = 0
-  times = 100
+  times = 1
  
   for j in 0..(times-1) do
     setup(target)
     timeCpp += time_method { system("dumblink_cpp/bin/dumblink #{source} #{cppD} #{amount}") }
     tearDown(cppD)
-    timeRuby += time_method { system("dumblink_rb/bin/dumblink #{source} #{cppD} #{amount}") }
+    timeRuby += time_method { system("ruby dumblink_rb/dumblink #{source} #{cppD} #{amount}") }
     tearDown(rubyD)
     timeMethod += time_method { for i in 0..(amount -1) do
                                 File.link(source, (methodD + "/link#{i}"))
