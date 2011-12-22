@@ -56,20 +56,27 @@ def main
   rubyD = target + "/ruby"
   methodD = target + "/method"
 
-  setup(target)
-  
-  timeCpp = time_method { system("dumblink_cpp/bin/dumblink #{source} #{cppD} #{amount}") }
-  tearDown(cppD)
-  timeRuby = time_method { system("dumblink_rb/bin/dumblink #{source} #{cppD} #{amount}") }
-  tearDown(rubyD)
-  timeMethod = time_method { for i in 0..(amount -1) do
-                               File.link(source, (target + "/link#{i}"))
-                             end }
+  timeCpp = 0
+  timeRuby = 0
+  timeMethod = 0
+  times = 100
+ 
+  for j in 0..(times-1) do
+    setup(target)
+    timeCpp += time_method { system("dumblink_cpp/bin/dumblink #{source} #{cppD} #{amount}") }
+    tearDown(cppD)
+    timeRuby += time_method { system("dumblink_rb/bin/dumblink #{source} #{cppD} #{amount}") }
+    tearDown(rubyD)
+    timeMethod += time_method { for i in 0..(amount -1) do
+                                File.link(source, (methodD + "/link#{i}"))
+                               end }
+    tearDown(methodD)
+  end
   
   puts "This will benchmark hardlink creation of ruby and c++"
-  puts "Dumblink C++: #{timeCpp}ms"
-  puts "Dumblink Ruby: #{timeRuby}ms"
-  puts "Dumblink Method: #{timeMethod}ms"
+  puts "Dumblink C++: #{timeCpp/times}ms"
+  puts "Dumblink Ruby: #{timeRuby/times}ms"
+  puts "Dumblink Method: #{timeMethod/times}ms"
 
   tearDown(target)
 end
