@@ -45,16 +45,15 @@ end
 # Time script execution (by Johannes Huning)
 def time_exec(command)
   res = `(/usr/bin/time #{command}) 3>&1 1>/dev/null 2>&3`
+  raise "Expected '#{command}' to run successfully"  unless $?.success?
 
-  raise "Command '#{command}' failed"  unless $?.success?
-
-  /.*([\d\.]{4,}) real.*/.match(res) do |md|
-    return md[1].to_f * 1000
-  end
+  regex = (RUBY_PLATFORM =~ /linux/) \
+    ? /.*([\d\.]{5,})elapsed.*/ \
+    : /.*([\d\.]{4,}) real.*/
+  regex.match(res) { |md| return md[1].to_f * 1000 }
 
   raise "Timing '#{command}' failed"
 end
-
 
 def main
   source = File.absolute_path(ARGV[0])
