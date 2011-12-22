@@ -34,7 +34,7 @@ def tearDown(target)
   FileUtils.rm_rf(target)
 end
 
-# Time execution time of method or block
+# Time execution time of block (by Steve Dierker)
 def time_method
   beginning_time = Time.now
   yield
@@ -42,11 +42,26 @@ def time_method
   (end_time - beginning_time) * 1000
 end
 
+# Time script execution (by Johannes Huning)
+def time_exec(command)
+  res = `(/usr/bin/time #{command}) 3>&1 1>/dev/null 2>&3`
+
+  raise "Command '#{command}' failed"  unless $?.success?
+
+  /.*([\d\.]{4,}) real.*/.match(res) do |md|
+    return md[1].to_f * 1000
+  end
+
+  raise "Timing '#{command}' failed"
+end
+
+
 def main
   source = File.absolute_path(ARGV[0])
   target = File.absolute_path(ARGV[1])
   amount = ARGV[2].to_i
   times = ARGV[3].to_i
+  variant = ARGV[4].to_i == 0 ? true : false  
 
   cppD = target + "/cpp"
   rubyD = target + "/ruby"
@@ -58,14 +73,21 @@ def main
  
   for j in 0..(times-1) do
     setup(target)
-    timeCpp += time_method { system("dumblink-cpp/bin/dumblink #{source} #{cppD} #{amount}") }
-    tearDown(cppD)
-    timeRuby += time_method { system("dumblink-rb/dumblink #{source} #{rubyD} #{amount}") }
-    tearDown(rubyD)
-    timeMethod += time_method { for i in 0..(amount -1) do
+    if variant
+      timeCpp += time_method { system("dumblink-cpp/bin/dumblink #{source} #{cppD} #{amount}") }
+      tearDown(cppD)
+      timeRuby += time_method { system("dumblink-rb/dumblink #{source} #{rubyD} #{amount}") }
+      tearDown(rubyD)
+      timeMethod += time_method { for i in 0..(amount -1) do
                                 File.link(source, (methodD + "/link#{i}"))
                                end }
-    tearDown(methodD)
+      tearDown(methodD)
+    else
+      timeCpp += time_exec("dumblink-cpp/bin/dumblink #{source} #{cppD} #{amount}")
+      tearDown(cppD)
+      timeRuby += time_exec("dumblink-rb/dumblink #{source} #{rubyD} #{amount}")
+      tearDown(rubyD)
+    end
   end
   
   puts "This will benchmark hardlink creation of ruby and c++"
@@ -77,8 +99,8 @@ def main
 end
 
 if __FILE__ == $PROGRAM_NAME
-  if ARGV.length < 4
-    puts "Usage: " + $PROGRAMM_NAME + " <source> <target_dir> <amount> <times>"
+  if ARGV.length < 5
+    puts "Usage: " + $PROGRAMM_NAME + " <source> <target_dir> <amount> <times> <variant>"
     Kernel.exit(1)
  end
   main()
