@@ -24,9 +24,6 @@ require 'fileutils'
 # Setup test directory structure
 def setup(target)
   Dir.mkdir(target) unless File.directory?(target)
-  Dir.mkdir(target+"/cpp") unless File.directory?(target+"/cpp")
-  Dir.mkdir(target+"/ruby") unless File.directory?(target+"/ruby")
-  Dir.mkdir(target+"/method") unless File.directory?(target+"/method")
 end
 
 # tearDown structure
@@ -62,44 +59,53 @@ def main
   times = ARGV[3].to_i
   variant = ARGV[4].to_i == 0 ? true : false  
 
-  cppD = target + "/cpp"
-  rubyD = target + "/ruby"
-  methodD = target + "/method"
+  tests = []
+  basedir = File.expand_path(File.dirname(__FILE__))
+  Dir.foreach(basedir) do |x|
+    next unless m = /dumblink-(.*)/.match(x)
+    lang = m.captures[0]
+    tests << {
+      :lang => lang,
+      :bin => basedir + "/" + x + "/" + "dumblink-" + lang,
+      :targetdir => target + "/" + lang,
+      :time => 0
+    }
+  end
 
-  timeCpp = 0
-  timeRuby = 0
+  setup(target) 
+
   timeMethod = 0
- 
+  methodD = target + "/" + "method"
+
   for j in 0..(times-1) do
-    setup(target)
+    tests.each do |test|
+      setup(test[:targetdir])
+      if variant
+        test[:time] += time_method { system("#{test[:bin]} #{source} #{test[:targetdir]} #{amount}") } 
+      else
+        test[:time] += time_exec("#{test[:bin]} #{source} #{test[:targetdir]} #{amount}")
+      end
+      tearDown(test[:targetdir])
+    end
     if variant
-      timeCpp += time_method { system("dumblink-cpp/bin/dumblink #{source} #{cppD} #{amount}") }
-      tearDown(cppD)
-      timeRuby += time_method { system("dumblink-rb/dumblink #{source} #{rubyD} #{amount}") }
-      tearDown(rubyD)
-      timeMethod += time_method { for i in 0..(amount -1) do
-                                File.link(source, (methodD + "/link#{i}"))
-                               end }
-      tearDown(methodD)
-    else
-      timeCpp += time_exec("dumblink-cpp/bin/dumblink #{source} #{cppD} #{amount}")
-      tearDown(cppD)
-      timeRuby += time_exec("dumblink-rb/dumblink #{source} #{rubyD} #{amount}")
-      tearDown(rubyD)
+        setup(methodD)
+        timeMethod += time_method { for i in 0..(amount -1) do
+                                  File.link(source, (methodD + "/link#{i}"))
+                                 end }
+        tearDown(methodD)
     end
   end
   
-  puts "This will benchmark hardlink creation of ruby and c++"
-  puts "Dumblink C++: #{timeCpp/times}ms"
-  puts "Dumblink Ruby: #{timeRuby/times}ms"
-  puts "Dumblink Method: #{timeMethod/times}ms"
+  puts "This will benchmark hardlink creation."
+  tests.each { |test| puts "Dumblink #{test[:lang]}: #{test[:time]/times}ms" }
+  puts "Dumblink Method: #{timeMethod/times}ms" if variant
 
   tearDown(target)
 end
 
 if __FILE__ == $PROGRAM_NAME
   if ARGV.length < 5
-    puts "Usage: " + $PROGRAMM_NAME + " <source> <target_dir> <amount> <times> <variant>"
+    puts "Usage: " + $PROGRAM_NAME + " <source> <target_dir> <amount> <times> <variant>"
     Kernel.exit(1)
  end
   main()
