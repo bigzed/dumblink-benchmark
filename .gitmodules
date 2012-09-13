@@ -4,3 +4,6 @@
 [submodule "dumblink-rb"]
 	path = dumblink-rb
 	url = git@github.com:bigzed/dumblink-rb.git
+[submodule "dumblink-c"]
+	path = dumblink-c
+	url = git://github.com/maltoe/dumblink-c.git
